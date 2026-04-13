@@ -1,0 +1,23 @@
+# Tests et fichiers de dev
+tests/
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+*.zip
+
+# Données locales
+data/
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# Docs
+README.md
+*.md
+setup.cfg
+pytest.ini

@@ -1,0 +1,12 @@
+# Fichiers à exclure du déploiement Railway
+data/
+*.db
+*.db-journal
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+__pycache__/
+*.pyc
+.env
+.git/

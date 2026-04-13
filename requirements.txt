@@ -1,0 +1,29 @@
+# =============================================================
+# requirements.txt — mission-agent
+# =============================================================
+
+# ── HTTP & scraping ───────────────────────────────────────────
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
+# ── Scraping JS (optionnel — pour Malt, LinkedIn) ────────────
+# playwright>=1.44.0
+# → après install : playwright install chromium
+
+# ── API clients ───────────────────────────────────────────────
+openai==1.35.0
+
+# ── JobSpy — LinkedIn (optionnel) ────────────────────────────
+# python-jobspy>=0.1.0
+
+# ── Async ─────────────────────────────────────────────────────
+aiohttp==3.9.5
+
+# ── Utils ─────────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Tests ─────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-cov==5.0.0
+pytest-asyncio==0.23.7
