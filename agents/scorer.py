@@ -60,11 +60,26 @@ async def score_job(job: dict) -> dict:
 
     # ── 5. Langue préférée ───────────────────────────────────
     lang = analysis.get("langue", "")
-    if lang in settings.PREFERRED_LANGS:
-        score += 0.05
+
+    # Détection FR directe dans le texte brut (si l'analyse IA n'est pas dispo)
+    fr_markers = ["recherche", "besoin", "mission", "développeur", "prestataire",
+                  "site web", "vitrine", "refonte", "création", "boutique"]
+    en_markers = ["looking for", "we need", "hiring", "developer wanted",
+                  "remote position", "job offer", "apply now"]
+    text_has_fr = any(m in text for m in fr_markers)
+    text_has_en = any(m in text for m in en_markers)
+
+    if lang in settings.PREFERRED_LANGS or (not lang and text_has_fr and not text_has_en):
+        score += 0.10   # boost FR renforcé
+        detail["lang"] = "fr"
+    elif lang and lang not in settings.PREFERRED_LANGS:
+        score -= 0.30   # pénalité forte si langue détectée ≠ FR
         detail["lang"] = lang
+    elif text_has_en and not text_has_fr:
+        score -= 0.20   # pénalité si texte semble EN sans markers FR
+        detail["lang"] = "en?"
     else:
-        detail["lang"] = lang
+        detail["lang"] = lang or "?"
 
     # ── 6. C'est bien du freelance ? ─────────────────────────
     if not analysis.get("est_freelance", True):

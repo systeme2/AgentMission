@@ -30,36 +30,70 @@ class Settings:
 
     # --- Tes préférences (utilisées par le profil "all") ---
     PREFERRED_KEYWORDS: List[str] = field(default_factory=lambda: [
-        "wordpress", "react", "nextjs", "seo", "vitrine",
-        "refonte", "site web", "frontend", "freelance", "développeur"
+        # CMS & e-commerce
+        "wordpress", "shopify", "woocommerce", "elementor", "divi",
+        "wix", "squarespace", "prestashop",
+        # Types de missions
+        "création de site", "créer un site", "refonte", "refonte site",
+        "site vitrine", "site web", "boutique en ligne", "e-commerce",
+        "landing page", "site wordpress", "site shopify",
+        # Métier
+        "développeur web", "intégrateur", "webmaster", "freelance",
+        # Contexte FR
+        "mission freelance", "prestataire",
     ])
     NEGATIVE_KEYWORDS: List[str] = field(default_factory=lambda: [
-        "php legacy", "cobol", "vb.net", "stagiaire", "bénévole"
+        # Hors périmètre technique
+        "mobile app", "flutter", "react native", "ios", "android",
+        "machine learning", "data science", "devops", "blockchain",
+        # Conditions défavorables
+        "stagiaire", "bénévole", "gratuit", "sans rémunération",
+        "cobol", "vb.net", "php legacy",
+        # Missions anglophones (on veut FR uniquement)
+        "looking for", "we are hiring", "job offer",
     ])
-    MIN_BUDGET: int = 200
+    MIN_BUDGET: int = 300
     PREFERRED_LANGS: List[str] = field(default_factory=lambda: ["fr"])
 
     # --- Texte profil idéal pour les embeddings sémantiques ---
-    # Si vide → auto-généré depuis PREFERRED_KEYWORDS
-    IDEAL_PROFILE_TEXT: str = os.getenv("IDEAL_PROFILE_TEXT", "")
+    # Décrit précisément ce que tu cherches → meilleur scoring sémantique
+    IDEAL_PROFILE_TEXT: str = os.getenv(
+        "IDEAL_PROFILE_TEXT",
+        "Développeur web freelance spécialisé WordPress et Shopify. "
+        "Recherche missions de création de site vitrine, refonte de site existant, "
+        "boutique en ligne WooCommerce ou Shopify, landing page. "
+        "Missions en français uniquement, budget minimum 300€. "
+        "Télétravail ou remote."
+    )
+
+
 
     # --- Database ---
     # Sur Railway : DB_PATH=/app/data/missions.db (volume persistant)
     DB_PATH: str = os.getenv("DB_PATH", "data/missions.db")
 
     # --- Sources actives ---
+    # Sélection optimisée pour missions FR création/refonte de site
     SOURCES_ENABLED: List[str] = field(default_factory=lambda: [
-        # Phase 0
-        "codeur", "reddit", "remixjobs", "welovedevs",
-        # Phase 1
-        "freelance.com", "404works", "comeup", "befreelancr", "collective.work",
-        # Phase 2
-        "malt", "upwork", "remoteok", "freelancer.com",
-        "fiverr", "toptal", "kicklox",
-        # Phase 3
-        "hackernews", "dev.to", "linkedin", "twitter", "indiehackers",
-        # Nouvelles sources
-        "github.jobs", "rss.custom",
+        # ✅ Sources FR — missions WordPress/Shopify/site web
+        "codeur",          # codeur.com — meilleure source FR pour ce profil
+        "malt",            # malt.fr — beaucoup de missions vitrine/refonte
+        "remixjobs",       # flux RSS FR
+        "welovedevs",      # offres FR remote
+        "freelance.com",   # freelance.com FR
+        "404works",        # 404works — missions web FR
+        "comeup",          # comeup.com — marketplace FR
+        "befreelancr",     # befreelancr.com — FR
+        "collective.work", # collective.work — FR
+        "kicklox",         # kicklox — tech FR
+        # ✅ Sources mixtes avec filtre langue FR
+        "linkedin",        # LinkedIn — beaucoup de missions FR
+        "reddit",          # r/forhire filtre FR dans les tags
+        # ✅ Sources nouvelles
+        "rss.custom",      # tes flux RSS perso (configurable)
+        # ❌ Désactivées — majoritairement EN, peu de WordPress/Shopify FR
+        # "upwork", "remoteok", "freelancer.com", "fiverr", "toptal",
+        # "hackernews", "dev.to", "twitter", "indiehackers", "github.jobs",
     ])
 
     # --- Credentials réseaux sociaux ---

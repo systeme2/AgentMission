@@ -56,23 +56,40 @@ PROFILES: dict[str, Profile] = {
         min_score = 0.4,
     ),
 
-    # Profil développeur WordPress
+    # Profil création/refonte de site web — WordPress, Shopify, vitrine FR
     "wordpress": Profile(
         name    = "wordpress",
-        label   = "🔌 WordPress / WooCommerce",
+        label   = "🔌 WordPress & Shopify FR",
         keywords= [
-            "wordpress", "woocommerce", "elementor", "divi", "woo",
-            "boutique en ligne", "e-commerce", "vitrine", "refonte site",
-            "plugin", "thème", "gutenberg",
+            # CMS
+            "wordpress", "shopify", "woocommerce", "elementor", "divi",
+            "wix", "squarespace", "prestashop", "gutenberg",
+            # Missions FR
+            "création de site", "créer un site", "refonte", "site vitrine",
+            "site web", "boutique en ligne", "e-commerce", "landing page",
+            "site wordpress", "site shopify",
+            # Compétences
+            "intégrateur", "webmaster", "développeur web", "plugin", "thème",
         ],
-        negative_keywords = ["angular", "django", "rails", "cobol", "stagiaire"],
+        negative_keywords = [
+            "angular", "django", "rails", "cobol", "stagiaire", "bénévole",
+            "gratuit", "flutter", "react native", "mobile", "ios", "android",
+            "looking for", "we are hiring",
+        ],
         min_budget= 300,
-        min_score = 0.45,
+        min_score = 0.40,
+        preferred_langs = ["fr"],
         ideal_profile_text = (
-            "Expert WordPress senior, spécialiste WooCommerce et Elementor. "
-            "Refonte de sites vitrines et boutiques en ligne. "
-            "Remote uniquement. Budget minimum 300€."
+            "Développeur web freelance spécialisé WordPress et Shopify. "
+            "Création de sites vitrines, refonte de sites existants, "
+            "boutiques en ligne WooCommerce et Shopify. "
+            "Missions en français uniquement. Remote. Budget minimum 300€."
         ),
+        sources_override = [
+            "codeur", "malt", "remixjobs", "welovedevs",
+            "freelance.com", "404works", "comeup", "befreelancr",
+            "collective.work", "kicklox", "linkedin", "rss.custom",
+        ],
     ),
 
     # Profil développeur React / Next.js
