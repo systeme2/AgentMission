@@ -140,22 +140,26 @@ def get_url_from_hash(url_hash: str) -> str | None:
 # ── Handlers de commandes ─────────────────────────────────────
 
 def _handle_start(chat_id: str):
-    msg = """🤖 *Mission Agent — Bot bidirectionnel*
+    msg = """🤖 *Mission Agent v2 — Bot bidirectionnel*
 
-Je scrape 21 sources pour te trouver des missions freelance.
+Je scrape 23 sources pour te trouver des missions freelance.
 
-*Commandes disponibles :*
-/stats   → statistiques
-/top5    → 5 meilleures missions
-/status  → état de l'agent
-/pause X → pause X minutes (ex: /pause 60)
-/resume  → reprendre
-/seuil X → changer le seuil de score (ex: /seuil 0.6)
+*📋 Consulter les missions :*
+/top5       → 5 meilleures missions (par score)
+/dernieres  → 10 dernières missions reçues
+
+*📊 Statistiques & contrôle :*
+/stats      → statistiques globales
+/status     → état de l'agent
+/pause 60   → pause 60 minutes
+/resume     → reprendre maintenant
+/seuil 0.5  → changer le seuil de score
 
 *Sur chaque notification :*
-👍 → like (améliore le scoring futur)
-👎 → dislike (réduit ce type de missions)
-📝 → marquer comme postulée"""
+👍 → like  👎 → pas pour moi  📝 → postulée
+
+*🆘 Dépannage :*
+/monid → affiche ton chat\_id (utile si accès refusé)"""
     _send(chat_id, msg)
 
 
@@ -175,27 +179,65 @@ def _handle_stats(chat_id: str):
 
 
 def _handle_top5(chat_id: str):
+    """Top 5 missions par score parmi les 50 dernières notifiées."""
     missions = get_all_missions(limit=50)
-    # Filtre missions non vues avec score élevé
     top = sorted(
-        [m for m in missions if m.get("status") == "sent" and m.get("score", 0) > 0],
+        [m for m in missions if m.get("score", 0) > 0],
         key=lambda m: m.get("score", 0),
         reverse=True,
     )[:5]
 
     if not top:
-        _send(chat_id, "📭 Aucune mission en attente pour l'instant.")
+        _send(chat_id,
+              "📭 Aucune mission en base.\n\n"
+              "L\'agent n\'a peut-être pas encore complété un cycle. "
+              "Tape /status pour vérifier.")
         return
 
     lines = []
     for i, m in enumerate(top, 1):
         score_pct = int((m.get("score") or 0) * 100)
-        title     = (m.get("title") or "")[:60]
+        title     = (m.get("title") or "")[:55]
         source    = m.get("source", "?")
+        status    = m.get("status", "?")
         url       = m.get("url", "#")
-        lines.append(f"{i}. *{title}*\n   {source} — {score_pct}% — [Voir]({url})")
+        status_icon = {"sent": "📲", "liked": "💚", "disliked": "🔴",
+                       "applied": "📝", "new": "🆕"}.get(status, "•")
+        lines.append(
+            f"{i}. {status_icon} *{title}*\n"
+            f"   {source} — {score_pct}% — [Voir la mission]({url})"
+        )
 
-    _send(chat_id, "🏆 *Top 5 missions :*\n\n" + "\n\n".join(lines))
+    _send(chat_id, "🏆 *Top 5 missions (score le plus élevé) :*\n\n" + "\n\n".join(lines))
+
+
+def _handle_dernieres(chat_id: str):
+    """10 dernières missions reçues, dans l\'ordre chronologique inverse."""
+    missions = get_all_missions(limit=10)
+
+    if not missions:
+        _send(chat_id,
+              "📭 Aucune mission en base.\n\n"
+              "L\'agent n\'a peut-être pas encore complété un cycle. "
+              "Tape /status pour vérifier l\'état.")
+        return
+
+    lines = []
+    for m in missions:
+        score_pct  = int((m.get("score") or 0) * 100)
+        title      = (m.get("title") or "")[:55]
+        source     = m.get("source", "?")
+        status     = m.get("status", "?")
+        url        = m.get("url", "#")
+        created    = (m.get("created_at") or "")[:16].replace("T", " ")
+        status_icon = {"sent": "📲", "liked": "💚", "disliked": "🔴",
+                       "applied": "📝", "new": "🆕"}.get(status, "•")
+        lines.append(
+            f"{status_icon} *{title}*\n"
+            f"   {source} — {score_pct}% — {created} — [Voir]({url})"
+        )
+
+    _send(chat_id, "📋 *10 dernières missions :*\n\n" + "\n\n".join(lines))
 
 
 def _handle_status(chat_id: str):
@@ -310,9 +352,24 @@ def _dispatch_update(update: dict):
     if not text or not chat_id:
         return
 
+    # /monid répond à TOUT le monde sans auth — utile pour trouver son chat_id
+    if text.lower().startswith("/monid"):
+        _send(chat_id,
+              f"🪪 *Ton chat\_id :* `{chat_id}`\n\n"
+              f"Copie cette valeur dans la variable `TELEGRAM_CHAT_ID` de Railway.",
+              parse_mode="Markdown")
+        return
+
     # Sécurité : n'accepte que les messages de ton propre chat
-    if chat_id != str(settings.TELEGRAM_CHAT_ID):
-        _send(chat_id, "⛔ Accès refusé.")
+    # Normalisation : strip() gère les espaces parasites dans les variables Railway
+    allowed_id = str(settings.TELEGRAM_CHAT_ID).strip()
+    if chat_id.strip() != allowed_id:
+        print(f"  ⚠️  [TelegramBot] Message refusé de chat_id={chat_id!r} (attendu: {allowed_id!r})")
+        _send(chat_id,
+              f"⛔ *Accès refusé.*\n\n"
+              f"🪪 Ton chat\_id : `{chat_id}`\n\n"
+              f"Mets cette valeur dans la variable `TELEGRAM_CHAT_ID` sur Railway.",
+              parse_mode="Markdown")
         return
 
     text_lower = text.lower()
@@ -325,6 +382,9 @@ def _dispatch_update(update: dict):
 
     elif text_lower.startswith("/top5"):
         _handle_top5(chat_id)
+
+    elif text_lower.startswith("/dernieres") or text_lower.startswith("/dernières"):
+        _handle_dernieres(chat_id)
 
     elif text_lower.startswith("/status"):
         _handle_status(chat_id)
