@@ -56,6 +56,12 @@ from sources.wellfound         import get_wellfound_jobs
 from sources.product_hunt      import get_product_hunt_jobs
 from sources.facebook_groups   import get_facebook_groups_jobs
 
+# ── Sources Round 3 — FR spécialisées ────────────────────────
+from sources.freelancerepublik import get_freelancerepublik_jobs
+from sources.france_travail    import get_france_travail_jobs
+from sources.sortlist          import get_sortlist_jobs
+from sources.graphiste         import get_graphiste_jobs
+
 
 SOURCE_MAP = {
     # Phase 0
@@ -103,6 +109,11 @@ SOURCE_MAP = {
     "facebook.groups":  get_facebook_groups_jobs,
     # Communautés EN (déjà présentes)
     "indiehackers":     get_indiehackers_jobs,
+    # Round 3 — FR spécialisées
+    "freelancerepublik": get_freelancerepublik_jobs,
+    "france-travail":    get_france_travail_jobs,
+    "sortlist":          get_sortlist_jobs,
+    "graphiste":         get_graphiste_jobs,
 }
 
 

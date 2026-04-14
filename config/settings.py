@@ -76,38 +76,44 @@ class Settings:
     # Sélection optimisée pour missions FR création/refonte de site
     SOURCES_ENABLED: List[str] = field(default_factory=lambda: [
         # ✅ Plateformes freelance FR — sources primaires
-        "codeur",          # codeur.com — meilleure source FR
-        "malt",            # malt.fr — missions vitrine/refonte
-        "remixjobs",       # flux RSS FR
-        "welovedevs",      # offres FR remote
-        "freelance.com",   # freelance.com FR
-        "404works",        # 404works — missions web FR
-        "comeup",          # comeup.com — marketplace FR
-        "befreelancr",     # befreelancr.com — FR
-        "collective.work", # collective.work — FR
-        "kicklox",         # kicklox — tech FR
-        "cremedelacreme",  # Crème de la Crème — missions premium senior
+        "codeur",            # codeur.com — meilleure source FR
+        "malt",              # malt.fr — missions vitrine/refonte
+        "remixjobs",         # flux RSS FR
+        "welovedevs",        # offres FR remote
+        "freelance.com",     # freelance.com FR
+        "404works",          # 404works — missions web FR
+        "comeup",            # comeup.com — marketplace FR
+        "befreelancr",       # befreelancr.com — FR
+        "collective.work",   # collective.work — FR
+        "kicklox",           # kicklox — tech FR
+        "cremedelacreme",    # Crème de la Crème — missions premium senior
+        "freelancerepublik", # FreelanceRepublik — IT/web FR, sans commission
+        # ✅ Plateformes matching client/agence FR
+        "sortlist",          # Sortlist.fr — projets web/SEO PME françaises
+        "graphiste",         # Graphiste.com — briefs création site, SEO
+        # ✅ Institutions & portails emploi FR
+        "france-travail",    # France Travail (ex-Pôle Emploi) — API + RSS
         # ✅ Job boards FR
-        "indeed.fr",       # Indeed France — RSS freelance
-        "welcomejungle",   # Welcome to the Jungle
+        "indeed.fr",         # Indeed France — RSS freelance
+        "welcomejungle",     # Welcome to the Jungle
         # ✅ Annonces généralistes FR
-        "5euros",          # 5euros.com — micro-services FR
-        "paruvendu",       # ParuVendu — services informatique
+        "5euros",            # 5euros.com — micro-services FR
+        "paruvendu",         # ParuVendu — services informatique
         # ✅ Forums FR (demandes sans passer par plateformes)
-        "webrankseo",      # Forum WebRankSEO — SEO/web FR
-        "hardware.fr",     # Forum Hardware.fr — emploi IT
+        "webrankseo",        # Forum WebRankSEO — SEO/web FR
+        "hardware.fr",       # Forum Hardware.fr — emploi IT
         # ✅ Sources mixtes avec filtre FR
-        "linkedin",        # LinkedIn — missions FR
-        "reddit",          # r/forhire filtre FR
+        "linkedin",          # LinkedIn — missions FR
+        "reddit",            # r/forhire filtre FR
         # ✅ Startups & communautés internationales
-        "wellfound",       # Wellfound (ex-AngelList) — startups FR
-        "producthunt",     # Product Hunt — lancements startups
-        "indiehackers",    # Indie Hackers — makers FR
+        "wellfound",         # Wellfound (ex-AngelList) — startups FR
+        "producthunt",       # Product Hunt — lancements startups
+        "indiehackers",      # Indie Hackers — makers FR
         # ✅ Sources configurables
-        "rss.custom",      # flux RSS perso (configurable)
+        "rss.custom",        # flux RSS perso (configurable)
         # ⚠️  Activer prudemment (anti-bot agressif ou quota limité)
-        # "leboncoin",       # Leboncoin — anti-bot fort
-        # "stackoverflow.fr",# Stack Overflow — quota API 300/jour sans clé
+        # "leboncoin",         # Leboncoin — anti-bot fort
+        # "stackoverflow.fr",  # Stack Overflow — quota API 300/jour sans clé
         # ⚠️  Facebook : nécessite FB_ENABLED=true + cookies valides
         # "facebook.groups",
         # ❌ Désactivées — majoritairement EN
