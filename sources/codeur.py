@@ -7,6 +7,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 from config.settings import settings
+from sources.utils import async_fetch
 
 BASE_URL = "https://www.codeur.com"
 
@@ -26,7 +27,7 @@ async def get_codeur_jobs() -> list:
 
     try:
         url = f"{BASE_URL}/projects"
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp = await async_fetch(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
 
         soup = BeautifulSoup(resp.text, "html.parser")

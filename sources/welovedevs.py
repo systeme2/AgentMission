@@ -5,6 +5,7 @@
 import asyncio
 import requests
 from config.settings import settings
+from sources.utils import async_fetch
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
@@ -16,7 +17,7 @@ async def get_welovedevs_jobs() -> list:
     try:
         # WeLoveDevs a une API publique partielle
         url = "https://welovedevs.com/app/api/joboffers?page=0&size=20&remote=true"
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp = await async_fetch(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         data = resp.json()
 
@@ -62,7 +63,7 @@ async def get_remixjobs_jobs() -> list:
 
     try:
         url = "https://remixjobs.com/emploi/Freelance/page/1.rss"
-        resp = requests.get(url, headers=HEADERS, timeout=15)
+        resp = await async_fetch(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
 
         root = ET.fromstring(resp.content)

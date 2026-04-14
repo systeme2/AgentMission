@@ -75,7 +75,7 @@ class Settings:
     # --- Sources actives ---
     # Sélection optimisée pour missions FR création/refonte de site
     SOURCES_ENABLED: List[str] = field(default_factory=lambda: [
-        # ✅ Sources FR — missions WordPress/Shopify/site web
+        # ✅ Sources FR historiques — missions WordPress/Shopify/site web
         "codeur",          # codeur.com — meilleure source FR pour ce profil
         "malt",            # malt.fr — beaucoup de missions vitrine/refonte
         "remixjobs",       # flux RSS FR
@@ -89,8 +89,15 @@ class Settings:
         # ✅ Sources mixtes avec filtre langue FR
         "linkedin",        # LinkedIn — beaucoup de missions FR
         "reddit",          # r/forhire filtre FR dans les tags
-        # ✅ Sources nouvelles
+        # ✅ Nouvelles sources FR (ajoutées)
+        "cremedelacreme",  # Crème de la Crème — missions premium senior
+        "indeed.fr",       # Indeed France — RSS freelance
+        "welcomejungle",   # Welcome to the Jungle — offres FR
+        "5euros",          # 5euros.com — micro-services FR
+        # ✅ Sources configurables
         "rss.custom",      # tes flux RSS perso (configurable)
+        # ⚠️  Leboncoin activer prudemment (anti-bot agressif)
+        # "leboncoin",
         # ❌ Désactivées — majoritairement EN, peu de WordPress/Shopify FR
         # "upwork", "remoteok", "freelancer.com", "fiverr", "toptal",
         # "hackernews", "dev.to", "twitter", "indiehackers", "github.jobs",

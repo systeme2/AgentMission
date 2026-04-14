@@ -16,11 +16,25 @@ from config.settings import settings
 from config.profiles import list_profiles, get_profile
 
 
+async def _interruptible_sleep(seconds: int):
+    """Sleep interruptible : se réveille si /interval ou /resume est reçu."""
+    from core.telegram_bot import get_wakeup_event
+    event = get_wakeup_event()
+    if event is None:
+        await asyncio.sleep(seconds)
+        return
+    event.clear()
+    try:
+        await asyncio.wait_for(event.wait(), timeout=seconds)
+    except asyncio.TimeoutError:
+        pass  # timeout normal
+
+
 def print_banner():
     print("""
 ╔══════════════════════════════════════════════╗
-║        🤖  MISSION AGENT  v2.0              ║
-║   21 sources · Multi-profils · Telegram bot ║
+║        🤖  MISSION AGENT  v3.0              ║
+║  28 sources · Multi-profils · Telegram bot  ║
 ╚══════════════════════════════════════════════╝
 """)
 
@@ -68,8 +82,9 @@ async def run_loop(profile: str = None):
             if cycle % 12 == 0:
                 send_summary(get_stats())
 
-            print(f"\n💤 Prochain cycle dans {settings.LOOP_INTERVAL // 60} min...")
-            await asyncio.sleep(settings.LOOP_INTERVAL)
+            interval_min = settings.LOOP_INTERVAL // 60
+            print(f"\n💤 Prochain cycle dans {interval_min} min...")
+            await _interruptible_sleep(settings.LOOP_INTERVAL)
     finally:
         if bot_task:
             bot_task.cancel()

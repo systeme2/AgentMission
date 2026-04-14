@@ -1,13 +1,12 @@
 # =============================================================
-# sources/comeup.py — scraper ComeUp (ex 5euros.com)
+# sources/cinq_euros.py — scraper 5euros.com
 # =============================================================
 #
-# ComeUp est la principale plateforme française de micro-services.
-# Elle expose une section "demandes" où les clients postent leurs
-# besoins — c'est là qu'on cherche des missions pour freelances.
+# 5euros.com est une plateforme française de micro-services
+# (renommée mais gardant le domaine). Les clients postent
+# des demandes de services dans la catégorie informatique.
 #
-# URL cible : https://comeup.com/fr/services (marketplace services)
-# + section recherche de prestataires par les clients
+# URL cible : https://5euros.com/services/informatique
 # =============================================================
 
 import asyncio
@@ -16,27 +15,23 @@ from bs4 import BeautifulSoup
 from config.settings import settings
 from sources.utils import async_fetch
 
-BASE_URL     = "https://comeup.com"
-# Page où les clients cherchent des prestataires
-SEARCH_URL   = f"{BASE_URL}/fr/services"
-HEADERS      = {
+BASE_URL = "https://5euros.com"
+SEARCH_URLS = [
+    f"{BASE_URL}/services/creation-de-site-web",
+    f"{BASE_URL}/services/développement-web",
+    f"{BASE_URL}/services/referencement-seo",
+    f"{BASE_URL}/services/informatique",
+]
+HEADERS = {
     "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0 Safari/537.36",
     "Accept-Language": "fr-FR,fr;q=0.9",
     "Referer":         BASE_URL,
 }
 
-# Catégories tech à scraper
-TECH_CATEGORIES = [
-    "/fr/services/creation-site-web",
-    "/fr/services/développement-web",
-    "/fr/services/seo-referencement",
-    "/fr/services/logo-identite-visuelle",
-]
-
-_CARD_SELECTORS  = [".service-card", "[class*='service-card']", ".offer", "article", "[class*='item']"]
-_TITLE_SELECTORS = ["h3 a", "h2 a", ".title a", "a.service-name", "h3", "h2"]
-_PRICE_SELECTORS = [".price", "[class*='price']", "[class*='prix']", ".amount"]
-_DESC_SELECTORS  = [".description", ".subtitle", "p.desc", "p"]
+_CARD_SELECTORS  = [".service-card", "[class*='service-card']", ".gig-card", "article", "[class*='gig']"]
+_TITLE_SELECTORS = ["h3 a", "h2 a", ".title a", ".service-title a", "h3", "h2"]
+_PRICE_SELECTORS = [".price", "[class*='price']", ".amount", "[class*='amount']"]
+_DESC_SELECTORS  = [".description", ".subtitle", "p.desc", ".service-desc", "p"]
 
 
 def _abs(href: str) -> str:
@@ -53,16 +48,16 @@ def _first(el, selectors):
     return None
 
 
-async def get_comeup_jobs() -> list:
-    print("🕷️  [ComeUp] Scraping en cours...")
-    jobs = []
+async def get_cinq_euros_jobs() -> list:
+    print("🕷️  [5euros] Scraping en cours...")
+    jobs: list = []
     seen_urls: set = set()
 
-    urls_to_scrape = [SEARCH_URL] + [BASE_URL + cat for cat in TECH_CATEGORIES[:2]]
-
-    for page_url in urls_to_scrape:
+    for page_url in SEARCH_URLS[:2]:  # 2 catégories max pour limiter les requêtes
         try:
             resp = await async_fetch(page_url, headers=HEADERS, timeout=20)
+            if resp.status_code == 404:
+                continue
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
 
@@ -72,7 +67,7 @@ async def get_comeup_jobs() -> list:
                 if len(cards) >= 3:
                     break
 
-            for card in cards:
+            for card in cards[:20]:
                 try:
                     title_el = _first(card, _TITLE_SELECTORS)
                     if not title_el:
@@ -81,7 +76,6 @@ async def get_comeup_jobs() -> list:
                     if len(title) < 5:
                         continue
 
-                    # Lien
                     if title_el.name == "a":
                         href = title_el.get("href", "")
                     else:
@@ -104,15 +98,15 @@ async def get_comeup_jobs() -> list:
                         "description": desc,
                         "url":         link,
                         "budget_raw":  price,
-                        "source":      "comeup",
+                        "source":      "5euros",
                     })
                 except Exception as exc:
-                    print(f"  ⚠️  [ComeUp] parsing card: {exc}")
+                    print(f"  ⚠️  [5euros] card: {exc}")
 
             await asyncio.sleep(settings.REQUEST_DELAY)
 
         except requests.RequestException as exc:
-            print(f"  ❌ [ComeUp] {page_url}: {exc}")
+            print(f"  ❌ [5euros] {page_url}: {exc}")
 
-    print(f"  ✅ [ComeUp] {len(jobs)} missions trouvées")
+    print(f"  ✅ [5euros] {len(jobs)} missions trouvées")
     return jobs

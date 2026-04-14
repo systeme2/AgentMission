@@ -3,6 +3,9 @@
 # =============================================================
 
 import asyncio
+import difflib
+import hashlib
+import re
 from config.settings import settings
 
 # ── Sources Phase 0 (base) ───────────────────────────────────
@@ -34,8 +37,15 @@ from sources.twitter       import get_twitter_jobs
 from sources.indiehackers  import get_indiehackers_jobs
 
 # ── Sources nouvelles ─────────────────────────────────────────
-from sources.github_jobs   import get_github_jobs
-from sources.rss_custom    import get_custom_rss_jobs
+from sources.github_jobs       import get_github_jobs
+from sources.rss_custom        import get_custom_rss_jobs
+
+# ── Sources FR supplémentaires ────────────────────────────────
+from sources.cinq_euros        import get_cinq_euros_jobs
+from sources.welcome_jungle    import get_welcome_jungle_jobs
+from sources.indeed_fr         import get_indeed_fr_jobs
+from sources.leboncoin         import get_leboncoin_jobs
+from sources.cremedelacreme    import get_cremedelacreme_jobs
 
 
 SOURCE_MAP = {
@@ -67,6 +77,12 @@ SOURCE_MAP = {
     # Nouvelles sources
     "github.jobs":      get_github_jobs,
     "rss.custom":       get_custom_rss_jobs,
+    # Sources FR supplémentaires
+    "5euros":           get_cinq_euros_jobs,
+    "welcomejungle":    get_welcome_jungle_jobs,
+    "indeed.fr":        get_indeed_fr_jobs,
+    "leboncoin":        get_leboncoin_jobs,
+    "cremedelacreme":   get_cremedelacreme_jobs,
 }
 
 
@@ -92,14 +108,48 @@ async def collect_jobs() -> list:
         elif isinstance(res, list):
             all_jobs.extend(res)
 
-    # Déduplique par URL dès la collecte
+    # ── Dédup 1 : par URL ────────────────────────────────────
     seen_urls = set()
-    unique_jobs = []
+    url_deduped = []
     for job in all_jobs:
         url = job.get("url", "")
         if url and url not in seen_urls:
             seen_urls.add(url)
-            unique_jobs.append(job)
+            url_deduped.append(job)
 
-    print(f"\n📊 COLLECTOR — {len(unique_jobs)} missions uniques récupérées\n")
-    return unique_jobs
+    # ── Dédup 2 : par hash titre+source (même job, URL différente) ──
+    seen_hashes = set()
+    hash_deduped = []
+    for job in url_deduped:
+        h = _title_hash(job.get("title", ""), job.get("source", ""))
+        job["title_hash"] = h  # on l'attache pour la sauvegarde en DB
+        if h not in seen_hashes:
+            seen_hashes.add(h)
+            hash_deduped.append(job)
+
+    # ── Dédup 3 : fuzzy matching sur les titres (seuil 0.85) ─────
+    fuzzy_deduped = []
+    seen_titles: list = []
+    for job in hash_deduped:
+        title_norm = re.sub(r"\W+", " ", (job.get("title") or "").lower()).strip()
+        if not title_norm:
+            fuzzy_deduped.append(job)
+            continue
+        is_dup = any(
+            difflib.SequenceMatcher(None, title_norm, t).ratio() > 0.85
+            for t in seen_titles
+        )
+        if not is_dup:
+            seen_titles.append(title_norm)
+            fuzzy_deduped.append(job)
+
+    removed = len(all_jobs) - len(fuzzy_deduped)
+    print(f"\n📊 COLLECTOR — {len(fuzzy_deduped)} missions uniques "
+          f"({removed} doublons supprimés)\n")
+    return fuzzy_deduped
+
+
+def _title_hash(title: str, source: str) -> str:
+    """Hash MD5 court du titre normalisé + source pour détecter les doublons cross-URL."""
+    normalized = re.sub(r"\W+", " ", title.lower()).strip()
+    return hashlib.md5(f"{normalized}|{source}".encode()).hexdigest()[:12]

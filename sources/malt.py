@@ -19,6 +19,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from config.settings import settings
+from sources.utils import async_fetch
 
 BASE_URL    = "https://www.malt.fr"
 SEARCH_URL  = f"{BASE_URL}/s?q=freelance+d%C3%A9veloppeur&jt=freelance"
@@ -120,7 +121,7 @@ async def _scrape_with_requests() -> list:
     """Fallback BeautifulSoup si Playwright non disponible."""
     jobs = []
     try:
-        resp = requests.get(SEARCH_URL, headers=HEADERS, timeout=20)
+        resp = await async_fetch(SEARCH_URL, headers=HEADERS, timeout=20)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 

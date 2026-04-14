@@ -5,13 +5,16 @@
 import asyncio
 from agents.collector import collect_jobs, SOURCE_MAP
 from agents.analyzer import analyze_job
-from agents.scorer import score_job
+from agents.scorer import score_job, quick_keyword_score
 from agents.notifier import send_alert
-from core.database import is_seen, save_mission, update_status, get_stats
+from core.database import is_seen, is_title_hash_seen, save_mission, update_status, get_stats
 from core.memory import get_preferences
 from core.telegram_bot import is_paused
 from config.settings import settings
 from config.profiles import get_profile
+
+# Limite max de jobs analysés par cycle (évite les pics de coût IA)
+MAX_JOBS_PER_CYCLE = 50
 
 
 async def run_pipeline(profile_name: str = None) -> dict:
@@ -71,13 +74,39 @@ async def run_pipeline(profile_name: str = None) -> dict:
         _restore()
         return session
 
-    # ── 2. Filtrer les déjà vues ─────────────────────────────
-    new_jobs = [j for j in all_jobs if not is_seen(j.get("url", ""))]
+    # ── 2. Filtrer les déjà vues (URL + title_hash cross-cycle) ─
+    new_jobs = [
+        j for j in all_jobs
+        if not is_seen(j.get("url", ""))
+        and not is_title_hash_seen(j.get("title_hash", ""))
+    ]
     session["new"] = len(new_jobs)
     print(f"🆕 {len(new_jobs)} nouvelles missions (sur {len(all_jobs)} collectées)")
 
     if not new_jobs:
         print("👀 Tout a déjà été vu. Prochain cycle dans quelques minutes.")
+        _restore()
+        return session
+
+    # ── 2b. Pré-filtrage rapide par mots-clés (sans IA) ──────
+    # On trie par score rapide et on limite à MAX_JOBS_PER_CYCLE
+    # pour éviter les pics de coût IA quand beaucoup de nouvelles missions arrivent.
+    pre_scored = sorted(new_jobs, key=lambda j: quick_keyword_score(j), reverse=True)
+    jobs_to_skip = [j for j in pre_scored if quick_keyword_score(j) < 0.05]
+    jobs_to_analyze = [j for j in pre_scored if quick_keyword_score(j) >= 0.05]
+
+    if jobs_to_skip:
+        print(f"  ⏭️  {len(jobs_to_skip)} jobs ignorés avant IA (score rapide < 5%)")
+
+    # Limite pour maîtriser les coûts IA
+    if len(jobs_to_analyze) > MAX_JOBS_PER_CYCLE:
+        print(f"  ✂️  Limite IA : {MAX_JOBS_PER_CYCLE}/{len(jobs_to_analyze)} jobs analysés")
+        jobs_to_analyze = jobs_to_analyze[:MAX_JOBS_PER_CYCLE]
+
+    new_jobs = jobs_to_analyze
+
+    if not new_jobs:
+        print("👀 Aucun job ne passe le pré-filtre mots-clés.")
         _restore()
         return session
 

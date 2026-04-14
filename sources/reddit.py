@@ -5,6 +5,7 @@
 import asyncio
 import requests
 from config.settings import settings
+from sources.utils import async_fetch
 
 HEADERS = {
     "User-Agent": "MissionAgentBot/1.0 (personal freelance tracker)"
@@ -29,7 +30,7 @@ async def get_reddit_jobs() -> list:
     for sub in SUBREDDITS:
         try:
             url = f"https://www.reddit.com/r/{sub}/new.json?limit=25"
-            resp = requests.get(url, headers=HEADERS, timeout=15)
+            resp = await async_fetch(url, headers=HEADERS, timeout=15)
             resp.raise_for_status()
             data = resp.json()
 
