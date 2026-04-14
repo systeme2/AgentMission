@@ -11,6 +11,7 @@ import asyncio
 import requests
 from bs4 import BeautifulSoup
 from config.settings import settings
+from sources.utils import async_fetch
 
 BASE_URL = "https://404works.com"
 LIST_URL = f"{BASE_URL}/missions"
@@ -47,7 +48,7 @@ async def get_404works_jobs() -> list:
     jobs = []
 
     try:
-        resp = requests.get(LIST_URL, headers=HEADERS, timeout=20)
+        resp = await async_fetch(LIST_URL, headers=HEADERS, timeout=20)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 

@@ -30,6 +30,7 @@ def init_db():
             score       REAL,
             analysis    TEXT,       -- JSON analysé par IA
             status      TEXT DEFAULT 'new',   -- new | sent | archived | liked | disliked
+            title_hash  TEXT,       -- hash titre+source pour dédup cross-cycle
             created_at  TEXT DEFAULT (datetime('now'))
         )
     """)
@@ -52,6 +53,14 @@ def init_db():
         )
     """)
 
+    # Migration : ajouter title_hash si la colonne n'existe pas encore
+    try:
+        c.execute("ALTER TABLE missions ADD COLUMN title_hash TEXT")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_title_hash ON missions(title_hash)")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # colonne déjà présente
+
     conn.commit()
     conn.close()
     print("✅ Base de données initialisée")
@@ -66,6 +75,18 @@ def is_seen(url: str) -> bool:
     return result is not None
 
 
+def is_title_hash_seen(title_hash: str) -> bool:
+    """Vérifie si un job avec le même titre+source a déjà été vu (cross-cycle)."""
+    if not title_hash:
+        return False
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT 1 FROM missions WHERE title_hash = ?", (title_hash,))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
+
+
 def save_mission(job: dict) -> bool:
     """Sauvegarde une mission. Retourne False si déjà existante."""
     if is_seen(job["url"]):
@@ -74,15 +95,16 @@ def save_mission(job: dict) -> bool:
     c = conn.cursor()
     try:
         c.execute("""
-            INSERT INTO missions (url, title, description, source, score, analysis, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'new')
+            INSERT INTO missions (url, title, description, source, score, analysis, status, title_hash)
+            VALUES (?, ?, ?, ?, ?, ?, 'new', ?)
         """, (
             job.get("url"),
             job.get("title"),
             job.get("description", ""),
             job.get("source", "unknown"),
             job.get("score", 0.0),
-            json.dumps(job.get("analysis", {}), ensure_ascii=False)
+            json.dumps(job.get("analysis", {}), ensure_ascii=False),
+            job.get("title_hash", ""),
         ))
         conn.commit()
         return True

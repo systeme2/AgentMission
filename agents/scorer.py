@@ -7,6 +7,25 @@ from core.memory import apply_memory_to_score
 from agents.semantic_scorer import semantic_score_bonus
 
 
+def quick_keyword_score(job: dict) -> float:
+    """
+    Score rapide basé sur les mots-clés uniquement (sans IA).
+    Utilisé pour pré-filtrer les jobs avant l'analyse IA coûteuse.
+    Retourne un float entre 0.0 et 1.0.
+    """
+    text = (job.get("title", "") + " " + job.get("description", "")).lower()
+
+    # Mots-clés positifs
+    kw_hits = sum(1 for kw in settings.PREFERRED_KEYWORDS if kw.lower() in text)
+    kw_score = min(kw_hits * 0.12, 0.40)
+
+    # Mots-clés négatifs
+    neg_hits = sum(1 for kw in settings.NEGATIVE_KEYWORDS if kw.lower() in text)
+    neg_penalty = neg_hits * 0.15
+
+    return round(max(0.0, kw_score - neg_penalty), 3)
+
+
 async def score_job(job: dict) -> dict:
     """
     Score entre 0.0 et 1.0.
@@ -97,7 +116,13 @@ async def score_job(job: dict) -> dict:
     detail["stack"] = {"detected": detected_stack, "hits": stack_hits, "score": stack_score}
 
     # ── 8. Bonus sémantique (embeddings) ────────────────────
-    sem_bonus = await semantic_score_bonus(job)
+    # Optimisation : on n'appelle l'API embeddings que dans la "zone grise"
+    # [0.10, 0.75]. En dehors, le job est déjà clairement bon ou mauvais.
+    base_before_semantic = round(min(max(score, 0.0), 1.0), 3)
+    if settings.SEMANTIC_SCORING_ENABLED and 0.10 <= base_before_semantic <= 0.75:
+        sem_bonus = await semantic_score_bonus(job)
+    else:
+        sem_bonus = 0.0
     score += sem_bonus
     detail["semantic_bonus"] = sem_bonus
 
@@ -106,10 +131,59 @@ async def score_job(job: dict) -> dict:
     final_score = round(min(1.0, max(0.0, apply_memory_to_score(job, base_score))), 3)
     detail["memory_adjustment"] = round(final_score - base_score, 3)
 
+    # ── 10. Qualité client ───────────────────────────────────
+    quality_penalty = _client_quality_penalty(text)
+    if quality_penalty > 0:
+        final_score = round(max(0.0, final_score - quality_penalty), 3)
+    detail["client_quality_penalty"] = quality_penalty
+
     job["score"] = final_score
     job["score_detail"] = detail
 
     return job
+
+
+# ── Listes pour la détection qualité client ──────────────────
+
+_BLACKLIST_PHRASES = [
+    # Signaux budget faible / amateur
+    "petit budget", "pas cher", "prix bas", "économique", "low budget",
+    "faible budget", "budget serré", "budget limité", "budget réduit",
+    "cherche quelqu'un pas cher", "cherche pas cher",
+    # Signaux manque de sérieux / idée floue
+    "juste une idée", "juste voir", "pas encore sûr", "voir ce que ça donne",
+    "voir si c'est possible", "on verra", "si ça marche",
+    "je cherche quelqu'un", "tu peux faire ça",
+    # Signaux non-rémunérés
+    "bénévole", "gratuit mais", "en échange de visibilité",
+    "exposure", "en contrepartie de", "contre visibilité",
+    # Signaux junior / non-professionnel
+    "stagiaire accepté", "débutant bienvenu", "pas besoin d'expérience",
+    "mission rapide pas chère",
+]
+
+_PRO_SIGNALS = [
+    # Documents et process sérieux
+    "cahier des charges", "cdc", "spécifications techniques", "brief détaillé",
+    "appel d'offre", "appel d'offres", "devis", "bon de commande",
+    # Identité professionnelle
+    "société", "entreprise", "sas ", "sarl ", "sasu ", "eurl ",
+    "siren", "siret", "n° tva",
+    # Délais et budget définis
+    "budget défini", "budget alloué", "délai précis", "deadline",
+    "livraison en", "mise en production",
+]
+
+
+def _client_quality_penalty(text: str) -> float:
+    """
+    Retourne une pénalité entre 0.0 et 0.60 selon les signaux client.
+    Chaque phrase blacklistée ajoute 0.20, chaque signal pro réduit de 0.05.
+    Cap à 0.60 pour ne pas éliminer complètement un job potentiellement valable.
+    """
+    penalty = sum(0.20 for p in _BLACKLIST_PHRASES if p in text)
+    bonus   = sum(0.05 for p in _PRO_SIGNALS if p in text)
+    return round(min(max(penalty - bonus, 0.0), 0.60), 3)
 
 
 def _parse_budget_raw(raw: str) -> int:

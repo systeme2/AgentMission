@@ -44,7 +44,7 @@ async def analyze_job(job: dict) -> dict:
     try:
         prompt = ANALYSIS_PROMPT.format(
             title=job.get("title", ""),
-            description=job.get("description", "")[:1000],
+            description=job.get("description", "")[:500],
         )
 
         response = await asyncio.to_thread(
@@ -54,7 +54,7 @@ async def analyze_job(job: dict) -> dict:
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
-                max_tokens=400,
+                max_tokens=200,
                 temperature=0.1,
             )
         )

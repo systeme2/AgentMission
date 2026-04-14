@@ -16,6 +16,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from config.settings import settings
+from sources.utils import async_fetch
 
 BASE_URL  = "https://collective.work"
 API_URL   = f"{BASE_URL}/api/jobs"
@@ -111,7 +112,7 @@ async def get_collective_work_jobs() -> list:
 
     # ── Tentative 1 : API JSON ───────────────────────────────
     try:
-        resp = requests.get(
+        resp = await async_fetch(
             API_URL,
             headers={**HEADERS, "Accept": "application/json"},
             timeout=15,
@@ -128,7 +129,7 @@ async def get_collective_work_jobs() -> list:
 
     # ── Tentative 2 : scraping HTML ──────────────────────────
     try:
-        resp = requests.get(LIST_URL, headers=HEADERS, timeout=20)
+        resp = await async_fetch(LIST_URL, headers=HEADERS, timeout=20)
         resp.raise_for_status()
 
         # Vérifier si JSON embarqué (Next.js __NEXT_DATA__)

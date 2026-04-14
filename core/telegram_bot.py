@@ -42,6 +42,21 @@ _agent_state = {
     "last_update_id": 0,
 }
 
+# Event asyncio pour interrompre le sleep entre cycles
+# (déclenché par /interval, /resume)
+_wakeup_event: asyncio.Event | None = None
+
+
+def get_wakeup_event() -> asyncio.Event | None:
+    """Retourne l'event de réveil (utilisé par main.py pour le sleep interruptible)."""
+    return _wakeup_event
+
+
+def _trigger_wakeup():
+    """Réveille le sleep principal si l'event est initialisé."""
+    if _wakeup_event is not None:
+        _wakeup_event.set()
+
 
 # ── Getters d'état ────────────────────────────────────────────
 
@@ -140,20 +155,23 @@ def get_url_from_hash(url_hash: str) -> str | None:
 # ── Handlers de commandes ─────────────────────────────────────
 
 def _handle_start(chat_id: str):
-    msg = """🤖 *Mission Agent v2 — Bot bidirectionnel*
+    interval_min = settings.LOOP_INTERVAL // 60
+    msg = f"""🤖 *Mission Agent v2 — Bot bidirectionnel*
 
-Je scrape 23 sources pour te trouver des missions freelance.
+Je scrape 23+ sources pour te trouver des missions freelance.
 
 *📋 Consulter les missions :*
 /top5       → 5 meilleures missions (par score)
 /dernieres  → 10 dernières missions reçues
 
 *📊 Statistiques & contrôle :*
-/stats      → statistiques globales
-/status     → état de l'agent
-/pause 60   → pause 60 minutes
-/resume     → reprendre maintenant
-/seuil 0.5  → changer le seuil de score
+/stats            → statistiques globales
+/status           → état de l'agent (actif/pause, intervalle)
+/pause 60         → pause 60 minutes
+/resume           → reprendre maintenant
+/seuil 0.5        → changer le seuil de score
+/interval 5m      → cycle toutes les 5 min _(actuel : {interval_min}m)_
+/interval 1h      → cycle toutes les heures
 
 *Sur chaque notification :*
 👍 → like  👎 → pas pour moi  📝 → postulée
@@ -241,12 +259,17 @@ def _handle_dernieres(chat_id: str):
 
 
 def _handle_status(chat_id: str):
+    interval_min = settings.LOOP_INTERVAL // 60
     if is_paused():
         until = _agent_state.get("pause_until")
         until_str = until.strftime("%H:%M") if until else "?"
-        _send(chat_id, f"⏸ *Agent en pause* jusqu'à {until_str}")
+        _send(chat_id,
+              f"⏸ *Agent en pause* jusqu'à {until_str}\n"
+              f"⏱ Intervalle configuré : *{interval_min} min*")
     else:
-        _send(chat_id, "▶️ *Agent actif* — scrape toutes les 5 min")
+        _send(chat_id,
+              f"▶️ *Agent actif*\n"
+              f"⏱ Cycle toutes les *{interval_min} min*")
 
 
 def _handle_pause(chat_id: str, minutes: int):
@@ -261,7 +284,52 @@ def _handle_pause(chat_id: str, minutes: int):
 def _handle_resume(chat_id: str):
     _agent_state["paused"]      = False
     _agent_state["pause_until"] = None
-    _send(chat_id, "▶️ *Agent repris !*")
+    _trigger_wakeup()  # interrompt le sleep pour démarrer un cycle immédiatement
+    _send(chat_id, "▶️ *Agent repris !* Le prochain cycle démarre maintenant.")
+
+
+def _handle_interval(chat_id: str, raw: str):
+    """Change l'intervalle entre cycles. Ex: /interval 5m  /interval 1h  /interval 30m"""
+    raw = raw.strip().lower()
+    seconds = None
+    label   = ""
+
+    m_min  = re.match(r"^(\d+)\s*m(?:in)?$", raw)
+    m_hour = re.match(r"^(\d+)\s*h(?:eure?s?)?$", raw)
+    m_sec  = re.match(r"^(\d+)\s*s(?:ec)?$", raw)
+
+    if m_min:
+        minutes = int(m_min.group(1))
+        if not 1 <= minutes <= 1440:
+            _send(chat_id, "❌ Intervalle invalide (1min–24h)")
+            return
+        seconds = minutes * 60
+        label   = f"{minutes} min"
+    elif m_hour:
+        hours = int(m_hour.group(1))
+        if not 1 <= hours <= 24:
+            _send(chat_id, "❌ Intervalle invalide (1h–24h)")
+            return
+        seconds = hours * 3600
+        label   = f"{hours}h"
+    elif m_sec:
+        secs = int(m_sec.group(1))
+        if not 30 <= secs <= 86400:
+            _send(chat_id, "❌ Intervalle invalide (30s–24h)")
+            return
+        seconds = secs
+        label   = f"{secs}s"
+    else:
+        _send(chat_id,
+              "Usage : `/interval 5m` `/interval 30m` `/interval 1h`\n"
+              "Exemples valides : 5m, 30m, 1h, 2h")
+        return
+
+    settings.LOOP_INTERVAL = seconds
+    _trigger_wakeup()  # interrompt le sleep en cours pour appliquer immédiatement
+    _send(chat_id,
+          f"⏱ *Intervalle mis à jour : {label}*\n"
+          f"Le prochain cycle démarre maintenant, puis toutes les {label}.")
 
 
 def _handle_seuil(chat_id: str, value: float):
@@ -409,6 +477,13 @@ def _dispatch_update(update: dict):
         else:
             _send(chat_id, "Usage : /seuil 0.5")
 
+    elif text_lower.startswith("/interval"):
+        m = re.search(r"/interval\s+(\S+)", text_lower)
+        if m:
+            _handle_interval(chat_id, m.group(1))
+        else:
+            _send(chat_id, "Usage : `/interval 5m` `/interval 30m` `/interval 1h`")
+
     else:
         _send(chat_id, "❓ Commande inconnue. Tape /start pour voir les commandes.")
 
@@ -420,6 +495,9 @@ async def run_polling():
     Polling long-polling Telegram.
     Tourne en tâche asyncio parallèle de la boucle principale.
     """
+    global _wakeup_event
+    _wakeup_event = asyncio.Event()
+
     print("📡 [TelegramBot] Polling démarré...")
     offset = _agent_state["last_update_id"] + 1
 
