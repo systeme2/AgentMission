@@ -47,6 +47,15 @@ from sources.indeed_fr         import get_indeed_fr_jobs
 from sources.leboncoin         import get_leboncoin_jobs
 from sources.cremedelacreme    import get_cremedelacreme_jobs
 
+# ── Forums & communautés FR ───────────────────────────────────
+from sources.webrankseo        import get_webrankseo_jobs
+from sources.hardware_fr       import get_hardware_fr_jobs
+from sources.stackoverflow_fr  import get_stackoverflow_fr_jobs
+from sources.paruvendu         import get_paruvendu_jobs
+from sources.wellfound         import get_wellfound_jobs
+from sources.product_hunt      import get_product_hunt_jobs
+from sources.facebook_groups   import get_facebook_groups_jobs
+
 
 SOURCE_MAP = {
     # Phase 0
@@ -83,6 +92,17 @@ SOURCE_MAP = {
     "indeed.fr":        get_indeed_fr_jobs,
     "leboncoin":        get_leboncoin_jobs,
     "cremedelacreme":   get_cremedelacreme_jobs,
+    # Forums & communautés FR
+    "webrankseo":       get_webrankseo_jobs,
+    "hardware.fr":      get_hardware_fr_jobs,
+    "stackoverflow.fr": get_stackoverflow_fr_jobs,
+    "paruvendu":        get_paruvendu_jobs,
+    "wellfound":        get_wellfound_jobs,
+    "producthunt":      get_product_hunt_jobs,
+    # Réseaux sociaux (auth requise)
+    "facebook.groups":  get_facebook_groups_jobs,
+    # Communautés EN (déjà présentes)
+    "indiehackers":     get_indiehackers_jobs,
 }
 
 

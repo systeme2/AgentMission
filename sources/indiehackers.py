@@ -20,6 +20,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from config.settings import settings
+from sources.utils import async_fetch
 
 BASE_URL  = "https://www.indiehackers.com"
 LIST_URLS = [
@@ -111,6 +112,7 @@ def _parse_next_data(soup: BeautifulSoup) -> list:
 
 
 def _fetch(url: str) -> list:
+    """Synchronous fetch — appelé via asyncio.to_thread dans get_indiehackers_jobs."""
     jobs = []
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)

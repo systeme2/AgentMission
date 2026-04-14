@@ -75,9 +75,9 @@ class Settings:
     # --- Sources actives ---
     # Sélection optimisée pour missions FR création/refonte de site
     SOURCES_ENABLED: List[str] = field(default_factory=lambda: [
-        # ✅ Sources FR historiques — missions WordPress/Shopify/site web
-        "codeur",          # codeur.com — meilleure source FR pour ce profil
-        "malt",            # malt.fr — beaucoup de missions vitrine/refonte
+        # ✅ Plateformes freelance FR — sources primaires
+        "codeur",          # codeur.com — meilleure source FR
+        "malt",            # malt.fr — missions vitrine/refonte
         "remixjobs",       # flux RSS FR
         "welovedevs",      # offres FR remote
         "freelance.com",   # freelance.com FR
@@ -86,25 +86,46 @@ class Settings:
         "befreelancr",     # befreelancr.com — FR
         "collective.work", # collective.work — FR
         "kicklox",         # kicklox — tech FR
-        # ✅ Sources mixtes avec filtre langue FR
-        "linkedin",        # LinkedIn — beaucoup de missions FR
-        "reddit",          # r/forhire filtre FR dans les tags
-        # ✅ Nouvelles sources FR (ajoutées)
         "cremedelacreme",  # Crème de la Crème — missions premium senior
+        # ✅ Job boards FR
         "indeed.fr",       # Indeed France — RSS freelance
-        "welcomejungle",   # Welcome to the Jungle — offres FR
+        "welcomejungle",   # Welcome to the Jungle
+        # ✅ Annonces généralistes FR
         "5euros",          # 5euros.com — micro-services FR
+        "paruvendu",       # ParuVendu — services informatique
+        # ✅ Forums FR (demandes sans passer par plateformes)
+        "webrankseo",      # Forum WebRankSEO — SEO/web FR
+        "hardware.fr",     # Forum Hardware.fr — emploi IT
+        # ✅ Sources mixtes avec filtre FR
+        "linkedin",        # LinkedIn — missions FR
+        "reddit",          # r/forhire filtre FR
+        # ✅ Startups & communautés internationales
+        "wellfound",       # Wellfound (ex-AngelList) — startups FR
+        "producthunt",     # Product Hunt — lancements startups
+        "indiehackers",    # Indie Hackers — makers FR
         # ✅ Sources configurables
-        "rss.custom",      # tes flux RSS perso (configurable)
-        # ⚠️  Leboncoin activer prudemment (anti-bot agressif)
-        # "leboncoin",
-        # ❌ Désactivées — majoritairement EN, peu de WordPress/Shopify FR
+        "rss.custom",      # flux RSS perso (configurable)
+        # ⚠️  Activer prudemment (anti-bot agressif ou quota limité)
+        # "leboncoin",       # Leboncoin — anti-bot fort
+        # "stackoverflow.fr",# Stack Overflow — quota API 300/jour sans clé
+        # ⚠️  Facebook : nécessite FB_ENABLED=true + cookies valides
+        # "facebook.groups",
+        # ❌ Désactivées — majoritairement EN
         # "upwork", "remoteok", "freelancer.com", "fiverr", "toptal",
-        # "hackernews", "dev.to", "twitter", "indiehackers", "github.jobs",
+        # "hackernews", "dev.to", "twitter", "github.jobs",
     ])
 
     # --- Credentials réseaux sociaux ---
     TWITTER_BEARER_TOKEN: str = os.getenv("TWITTER_BEARER_TOKEN", "")
+
+    # --- Facebook Groups (sources/facebook_groups.py) ---
+    # FB_ENABLED=true pour activer (nécessite cookies valides)
+    # FB_COOKIES_PATH=/app/data/fb_cookies.json
+    # Procédure init : python -m sources.facebook_groups --login
+
+    # --- Stack Overflow API (optionnel) ---
+    # Sans clé : 300 req/jour  |  Avec clé : 10 000 req/jour
+    # STACKOVERFLOW_API_KEY=xxxxx (inscris-toi sur stackapps.com)
 
     # --- Bot Telegram bidirectionnel ---
     # True = polling actif en parallèle de la boucle principale
