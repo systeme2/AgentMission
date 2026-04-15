@@ -10,6 +10,23 @@ from config.settings import settings
 openai.api_key = settings.OPENAI_API_KEY
 
 
+# Compat: certains environnements ont une combinaison openai/httpx qui casse
+# l'initialisation du proxy lazy `openai.chat` (TypeError sur `proxies`).
+# On installe un stub minimal pour permettre les tests/mocks (`patch`) et
+# garder un fallback propre côté analyse.
+try:
+    _ = openai.chat.completions
+except Exception:
+    class _CompatCompletions:
+        def create(self, *args, **kwargs):
+            raise RuntimeError("OpenAI client unavailable in this environment")
+
+    class _CompatChat:
+        completions = _CompatCompletions()
+
+    openai.chat = _CompatChat()
+
+
 SYSTEM_PROMPT = """Tu es un assistant expert en analyse de missions freelance tech.
 Tu analyses les offres de mission et retournes UNIQUEMENT un JSON valide, sans markdown ni explication.
 """
