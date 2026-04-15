@@ -120,10 +120,12 @@ async def collect_jobs() -> list:
     """Lance toutes les sources activées en parallèle."""
     print("\n📡 COLLECTOR — Lancement des sources...")
 
+    task_sources = []
     tasks = []
     for source_name in settings.SOURCES_ENABLED:
         fn = SOURCE_MAP.get(source_name)
         if fn:
+            task_sources.append(source_name)
             tasks.append(fn())
         else:
             print(f"  ⚠️  Source inconnue : {source_name}")
@@ -132,40 +134,82 @@ async def collect_jobs() -> list:
 
     all_jobs = []
     for i, res in enumerate(results):
-        source = settings.SOURCES_ENABLED[i] if i < len(settings.SOURCES_ENABLED) else "?"
+        source = task_sources[i] if i < len(task_sources) else "?"
         if isinstance(res, Exception):
             print(f"  ❌ Source '{source}' a échoué: {res}")
         elif isinstance(res, list):
-            all_jobs.extend(res)
+            for job in res:
+                if not isinstance(job, dict):
+                    continue
+                normalized = _normalize_job(job, fallback_source=source)
+                if normalized:
+                    all_jobs.append(normalized)
 
-    # ── Dédup 1 : par URL ────────────────────────────────────
-    seen_urls = set()
-    url_deduped = []
+    # ── Dédup 1 : URL canonique quand dispo, sinon fingerprint ───────────
+    seen_keys = set()
+    deduped_jobs = []
     for job in all_jobs:
-        url = job.get("url", "")
-        if url and url not in seen_urls:
-            seen_urls.add(url)
-            url_deduped.append(job)
+        dedup_key = _dedup_key(job)
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+        deduped_jobs.append(job)
 
     # ── Dédup 2 : hash technique pour la DB (sans suppression) ─────────
-    # Le hash est conservé pour la persistance, mais la suppression est faite
-    # uniquement via l'URL puis un fuzzy matching prudent.
+    # Le hash est conservé pour la persistance.
     hash_deduped = []
-    for job in url_deduped:
+    for job in deduped_jobs:
         h = _title_hash(job.get("title", ""), job.get("source", ""))
         job["title_hash"] = h
         hash_deduped.append(job)
 
-    # ── Dédup 3 : désactivé (fuzzy trop agressif en pratique) ───────────
-    final_jobs = hash_deduped
-
-    removed = len(all_jobs) - len(final_jobs)
-    print(f"\n📊 COLLECTOR — {len(final_jobs)} missions uniques "
+    removed = len(all_jobs) - len(hash_deduped)
+    print(f"\n📊 COLLECTOR — {len(hash_deduped)} missions uniques "
           f"({removed} doublons supprimés)\n")
-    return final_jobs
+    return hash_deduped
 
 
 def _title_hash(title: str, source: str) -> str:
     """Hash MD5 court du titre normalisé + source pour détecter les doublons cross-URL."""
     normalized = re.sub(r"\W+", " ", title.lower()).strip()
     return hashlib.md5(f"{normalized}|{source}".encode()).hexdigest()[:12]
+
+
+def _normalize_job(job: dict, fallback_source: str) -> dict | None:
+    """Nettoie un job brut pour éviter les entrées inexploitables."""
+    title = str(job.get("title", "")).strip()
+    description = str(job.get("description", "")).strip()
+    url = _canonical_url(str(job.get("url", "")).strip())
+    if not title and not description and not url:
+        return None
+
+    normalized = dict(job)
+    normalized["title"] = title or "Mission sans titre"
+    normalized["description"] = description
+    normalized["source"] = str(job.get("source") or fallback_source or "").strip()
+    normalized["url"] = url
+    return normalized
+
+
+def _canonical_url(url: str) -> str:
+    """Normalise une URL pour une déduplication plus stable."""
+    if not url:
+        return ""
+    return re.sub(r"(#.*)$", "", url).strip()
+
+
+def _dedup_key(job: dict) -> str:
+    """
+    Clé de déduplication robuste:
+    - URL canonique si présente (cas principal)
+    - sinon empreinte sur source+titre+description (évite perte des jobs sans URL)
+    """
+    url = job.get("url", "")
+    if url:
+        return f"url:{url}"
+
+    title = re.sub(r"\W+", " ", (job.get("title") or "").lower()).strip()
+    description = re.sub(r"\W+", " ", (job.get("description") or "").lower()).strip()
+    source = (job.get("source") or "").lower().strip()
+    fingerprint = hashlib.md5(f"{source}|{title}|{description[:200]}".encode()).hexdigest()
+    return f"fp:{fingerprint}"

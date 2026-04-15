@@ -19,8 +19,8 @@ _Date de l'audit : 15 avril 2026_
 
 ### Snapshot après correctifs appliqués
 
-- **762 tests collectés**
-- **740 passés**
+- **763 tests collectés**
+- **741 passés**
 - **19 en échec**
 - **3 ignorés**
 
@@ -73,6 +73,7 @@ Plusieurs tests liés à Malt échouent avec:
 ## Plan d'action priorisé
 
 1. **P0 (fait)**: corriger la dédup collector qui supprimait des jobs légitimes.
+   - amélioration supplémentaire: les jobs sans URL sont maintenant conservés via une clé de déduplication de fallback (empreinte source+titre+description).
 2. **P0 (fait)**: durcir la compatibilité OpenAI/lazy proxy en environnement hétérogène.
 3. **P1**: figer une stratégie de baseline sources (FR vs internationale) et réaligner les tests.
 4. **P1**: stabiliser l'environnement CI pour Playwright.
@@ -87,4 +88,3 @@ Plusieurs tests liés à Malt échouent avec:
   - `config/settings.py`
   - `agents/analyzer.py`
   - `requirements.txt`
-
