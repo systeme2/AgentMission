@@ -13,6 +13,8 @@ lxml==5.2.2
 
 # ── API clients ───────────────────────────────────────────────
 openai==1.35.0
+# Compat OpenAI 1.35.0 (évite TypeError: unexpected keyword 'proxies')
+httpx<0.28
 
 # ── JobSpy — LinkedIn (optionnel) ────────────────────────────
 # python-jobspy>=0.1.0

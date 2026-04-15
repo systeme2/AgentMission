@@ -239,6 +239,38 @@ class TestCollectorIntegration:
             f"Trop peu de jobs après crash d'une source: {len(jobs)}"
         )
 
+    def test_collector_keeps_jobs_without_url(self):
+        """Un job sans URL ne doit pas être supprimé d'office."""
+        from agents.collector import collect_jobs
+        from config.settings import settings
+        import agents.collector as col_mod
+
+        source_names = ["codeur", "reddit"]
+
+        async def _no_url():
+            return [{
+                "title": "Mission sans url",
+                "description": "Refonte site vitrine wordpress",
+                "url": "",
+                "budget_raw": "300€",
+                "source": "codeur",
+            }]
+
+        fake_map = {name: _no_url for name in source_names}
+
+        original_map = col_mod.SOURCE_MAP.copy()
+        original_enabled = settings.SOURCES_ENABLED[:]
+        col_mod.SOURCE_MAP = fake_map
+        settings.SOURCES_ENABLED = source_names
+        try:
+            jobs = run(collect_jobs())
+        finally:
+            col_mod.SOURCE_MAP = original_map
+            settings.SOURCES_ENABLED = original_enabled
+
+        assert len(jobs) == 1
+        assert jobs[0]["title"] == "Mission sans url"
+
 
 # ── 4. Propriétés universelles des jobs ──────────────────────
 
