@@ -3,7 +3,6 @@
 # =============================================================
 
 import asyncio
-import difflib
 import hashlib
 import re
 from config.settings import settings
@@ -148,36 +147,22 @@ async def collect_jobs() -> list:
             seen_urls.add(url)
             url_deduped.append(job)
 
-    # ── Dédup 2 : par hash titre+source (même job, URL différente) ──
-    seen_hashes = set()
+    # ── Dédup 2 : hash technique pour la DB (sans suppression) ─────────
+    # Le hash est conservé pour la persistance, mais la suppression est faite
+    # uniquement via l'URL puis un fuzzy matching prudent.
     hash_deduped = []
     for job in url_deduped:
         h = _title_hash(job.get("title", ""), job.get("source", ""))
-        job["title_hash"] = h  # on l'attache pour la sauvegarde en DB
-        if h not in seen_hashes:
-            seen_hashes.add(h)
-            hash_deduped.append(job)
+        job["title_hash"] = h
+        hash_deduped.append(job)
 
-    # ── Dédup 3 : fuzzy matching sur les titres (seuil 0.85) ─────
-    fuzzy_deduped = []
-    seen_titles: list = []
-    for job in hash_deduped:
-        title_norm = re.sub(r"\W+", " ", (job.get("title") or "").lower()).strip()
-        if not title_norm:
-            fuzzy_deduped.append(job)
-            continue
-        is_dup = any(
-            difflib.SequenceMatcher(None, title_norm, t).ratio() > 0.85
-            for t in seen_titles
-        )
-        if not is_dup:
-            seen_titles.append(title_norm)
-            fuzzy_deduped.append(job)
+    # ── Dédup 3 : désactivé (fuzzy trop agressif en pratique) ───────────
+    final_jobs = hash_deduped
 
-    removed = len(all_jobs) - len(fuzzy_deduped)
-    print(f"\n📊 COLLECTOR — {len(fuzzy_deduped)} missions uniques "
+    removed = len(all_jobs) - len(final_jobs)
+    print(f"\n📊 COLLECTOR — {len(final_jobs)} missions uniques "
           f"({removed} doublons supprimés)\n")
-    return fuzzy_deduped
+    return final_jobs
 
 
 def _title_hash(title: str, source: str) -> str:
